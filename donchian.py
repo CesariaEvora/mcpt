@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 def donchian_breakout(ohlc: pd.DataFrame, lookback: int):
     # input df is assumed to have a 'close' column
@@ -12,12 +11,18 @@ def donchian_breakout(ohlc: pd.DataFrame, lookback: int):
     signal = signal.ffill()
     return signal
 
-def optimize_donchian(ohlc: pd.DataFrame):
+def optimize_donchian(
+    ohlc: pd.DataFrame,
+    lookback_min: int = 12,
+    lookback_max: int = 168,
+):
 
     best_pf = 0
     best_lookback = -1
     r = np.log(ohlc['close']).diff().shift(-1)
-    for lookback in range(12, 169):
+    lookback_min = max(2, int(lookback_min))
+    lookback_max = max(lookback_min + 1, int(lookback_max))
+    for lookback in range(lookback_min, lookback_max + 1):
         signal = donchian_breakout(ohlc, lookback)
         sig_rets = signal * r
         sig_pf = sig_rets[sig_rets > 0].sum() / sig_rets[sig_rets < 0].abs().sum()
@@ -28,7 +33,13 @@ def optimize_donchian(ohlc: pd.DataFrame):
 
     return best_lookback, best_pf
 
-def walkforward_donch(ohlc: pd.DataFrame, train_lookback: int = 24 * 365 * 4, train_step: int = 24 * 30):
+def walkforward_donch(
+    ohlc: pd.DataFrame,
+    train_lookback: int = 24 * 365 * 4,
+    train_step: int = 24 * 30,
+    lookback_min: int = 12,
+    lookback_max: int = 168,
+):
 
     n = len(ohlc)
     wf_signal = np.full(n, np.nan)
@@ -37,7 +48,11 @@ def walkforward_donch(ohlc: pd.DataFrame, train_lookback: int = 24 * 365 * 4, tr
     next_train = train_lookback
     for i in range(next_train, n):
         if i == next_train:
-            best_lookback, _ = optimize_donchian(ohlc.iloc[i-train_lookback:i])
+            best_lookback, _ = optimize_donchian(
+                ohlc.iloc[i-train_lookback:i],
+                lookback_min=lookback_min,
+                lookback_max=lookback_max,
+            )
             tmp_signal = donchian_breakout(ohlc, best_lookback)
             next_train += train_step
         
@@ -46,6 +61,7 @@ def walkforward_donch(ohlc: pd.DataFrame, train_lookback: int = 24 * 365 * 4, tr
     return wf_signal
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
 
     df = pd.read_parquet('BTCUSD3600.pq')
     df.index = df.index.astype('datetime64[s]')
@@ -65,5 +81,3 @@ if __name__ == '__main__':
     plt.title("In-Sample Donchian Breakout")
     plt.ylabel('Cumulative Log Return')
     plt.show()
-
-

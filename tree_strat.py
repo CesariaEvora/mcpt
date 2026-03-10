@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 from sklearn.tree import DecisionTreeClassifier
     
@@ -63,6 +62,7 @@ def tree_strategy(ohlc: pd.DataFrame, model):
     
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     df = pd.read_parquet('BTCUSD3600.pq')
     df.index = df.index.astype('datetime64[s]')
 
